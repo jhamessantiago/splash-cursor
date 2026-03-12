@@ -42,22 +42,22 @@ let config = {
  * 2. COLOR LOGIC (Teal Update)
  */
 function generateColor() {
-    // Pale Teal Base
-    let color = {
-        r: 160 / 255, // Higher red makes it "pale"
-        g: 230 / 255, // Strong green
-        b: 225 / 255  // Strong blue
-    };
+    // Hue range for teal is roughly 0.45 to 0.55
+    let hue = 0.45 + Math.random() * 0.1; 
+    let saturation = 0.95; 
+    let value = 0.5; // Medium brightness base
 
-    // Low-dim scaling (Subtle effect)
+    // Convert HSV to RGB using your existing helper function
+    let e = HSVtoRGB(hue, saturation, value);
+
+    // CRITICAL: Add this to keep it dim/subtle (as per your preference)
     const scale = 0.15;
-    color.r *= scale;
-    color.g *= scale;
-    color.b *= scale;
+    e.r *= scale;
+    e.g *= scale;
+    e.b *= scale;
 
-    return color;
+    return e;
 }
-
 /**
  * 3. WEBGL ENGINE INITIALIZATION
  */
