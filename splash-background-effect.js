@@ -42,7 +42,7 @@ let config = {
  * 2. COLOR LOGIC (Teal Update)
  */
 function generateColor() {
- // Hue range for teal is roughly 0.45 to 0.55
+    // Hue range for teal is roughly 0.45 to 0.55
     let hue = 0.45 + Math.random() * 0.1; 
     let saturation = 0.95; 
     let value = 0.5; // Medium brightness base
@@ -51,8 +51,8 @@ function generateColor() {
     let e = HSVtoRGB(hue, saturation, value);
 
     // CRITICAL: Add this to keep it dim/subtle (as per your preference)
-
-   e.r *= scale;
+    const scale = 0.15;
+    e.r *= scale;
     e.g *= scale;
     e.b *= scale;
 
