@@ -873,7 +873,7 @@ function updateColors(dt) {
         colorUpdateTimer += dt * config.COLOR_UPDATE_SPEED;
         if (colorUpdateTimer >= 1) {
             colorUpdateTimer = wrap(colorUpdateTimer, 0, 1);
-            pointers.forEach(p => { p.color = generateColor(); });
+            //pointers.forEach(p => { p.color = generateColor(); });
         }
     }
 }
