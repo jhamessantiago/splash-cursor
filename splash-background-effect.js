@@ -39,18 +39,16 @@ let config = {
 };
 
 /**
- * 2. COLOR LOGIC (Teal Update)
+ * 2. COLOR LOGIC (Teal Update - Locked)
  */
 function generateColor() {
-    // Hue range for teal is roughly 0.45 to 0.55
-    let hue = 0.45 + Math.random() * 0.1; 
+    // Hue range for teal
+    let hue = 0.48; // Locked to a nice teal hue
     let saturation = 0.95; 
-    let value = 0.5; // Medium brightness base
+    let value = 0.5;
 
-    // Convert HSV to RGB using your existing helper function
     let e = HSVtoRGB(hue, saturation, value);
 
-    // CRITICAL: Add this to keep it dim/subtle (as per your preference)
     const scale = 0.15;
     e.r *= scale;
     e.g *= scale;
@@ -58,6 +56,7 @@ function generateColor() {
 
     return e;
 }
+
 /**
  * 3. WEBGL ENGINE INITIALIZATION
  */
@@ -71,7 +70,7 @@ function pointerPrototype() {
     this.deltaY = 0;
     this.down = false;
     this.moved = false;
-    this.color = [30, 0, 300];
+    this.color = [0, 0, 0];
 }
 
 let pointers = [];
@@ -236,7 +235,7 @@ function addKeywords(e, r) {
 }
 
 /**
- * 5. SHADER SOURCES (Formatted)
+ * 5. SHADER SOURCES
  */
 const baseVertexShader = compileShader(gl.VERTEX_SHADER, `
     precision highp float;
@@ -258,7 +257,6 @@ const baseVertexShader = compileShader(gl.VERTEX_SHADER, `
     }
 `);
 
-// ... [Note: Shaders are logically unchanged but now use template literals for readability]
 const blurVertexShader = compileShader(gl.VERTEX_SHADER, `
     precision highp float;
     attribute vec2 aPosition;
@@ -384,7 +382,6 @@ const displayShaderSource = `
     }
 `;
 
-// Remaining Shaders (Prefilter, Bloom, Sunrays, Advection, etc.)
 const bloomPrefilterShader = compileShader(gl.FRAGMENT_SHADER, `
     precision mediump float;
     precision mediump sampler2D;
@@ -721,7 +718,6 @@ function initFramebuffers() {
     initSunraysFramebuffers();
 }
 
-// FBO Management
 function createFBO(w, h, internalFormat, format, type, filter) {
     gl.activeTexture(gl.TEXTURE0);
     let texture = gl.createTexture();
@@ -814,7 +810,7 @@ function createTextureAsync(url) {
     };
     let img = new Image();
     img.onload = () => {
-        obj.width = img.width; obj.height = img.img;
+        obj.width = img.width; obj.height = img.height;
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
     };
@@ -873,7 +869,7 @@ function updateColors(dt) {
         colorUpdateTimer += dt * config.COLOR_UPDATE_SPEED;
         if (colorUpdateTimer >= 1) {
             colorUpdateTimer = wrap(colorUpdateTimer, 0, 1);
-            //pointers.forEach(p => { p.color = generateColor(); });
+            // Color movement disabled here to lock Teal
         }
     }
 }
@@ -885,14 +881,10 @@ function applyInputs() {
 
 function step(dt) {
     gl.disable(gl.BLEND);
-
-    // Curl
     curlProgram.bind();
     gl.uniform2f(curlProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
     gl.uniform1i(curlProgram.uniforms.uVelocity, velocity.read.attach(0));
     blit(curl);
-
-    // Vorticity
     vorticityProgram.bind();
     gl.uniform2f(vorticityProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
     gl.uniform1i(vorticityProgram.uniforms.uVelocity, velocity.read.attach(0));
@@ -901,21 +893,15 @@ function step(dt) {
     gl.uniform1f(vorticityProgram.uniforms.dt, dt);
     blit(velocity.write);
     velocity.swap();
-
-    // Divergence
     divergenceProgram.bind();
     gl.uniform2f(divergenceProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
     gl.uniform1i(divergenceProgram.uniforms.uVelocity, velocity.read.attach(0));
     blit(divergence);
-
-    // Clear pressure
     clearProgram.bind();
     gl.uniform1i(clearProgram.uniforms.uTexture, pressure.read.attach(0));
     gl.uniform1f(clearProgram.uniforms.value, config.PRESSURE);
     blit(pressure.write);
     pressure.swap();
-
-    // Pressure
     pressureProgram.bind();
     gl.uniform2f(pressureProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
     gl.uniform1i(pressureProgram.uniforms.uDivergence, divergence.attach(0));
@@ -924,20 +910,15 @@ function step(dt) {
         blit(pressure.write);
         pressure.swap();
     }
-
-    // Gradient Subtract
     gradientSubtractProgram.bind();
     gl.uniform2f(gradientSubtractProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
     gl.uniform1i(gradientSubtractProgram.uniforms.uPressure, pressure.read.attach(0));
     gl.uniform1i(gradientSubtractProgram.uniforms.uVelocity, velocity.read.attach(1));
     blit(velocity.write);
     velocity.swap();
-
-    // Advection
     advectionProgram.bind();
     gl.uniform2f(advectionProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
     if (!ext.supportLinearFiltering) gl.uniform2f(advectionProgram.uniforms.dyeTexelSize, velocity.texelSizeX, velocity.texelSizeY);
-    
     let velRead = velocity.read.attach(0);
     gl.uniform1i(advectionProgram.uniforms.uVelocity, velRead);
     gl.uniform1i(advectionProgram.uniforms.uSource, velRead);
@@ -945,7 +926,6 @@ function step(dt) {
     gl.uniform1f(advectionProgram.uniforms.dissipation, config.VELOCITY_DISSIPATION);
     blit(velocity.write);
     velocity.swap();
-
     if (!ext.supportLinearFiltering) gl.uniform2f(advectionProgram.uniforms.dyeTexelSize, dye.texelSizeX, dye.texelSizeY);
     gl.uniform1i(advectionProgram.uniforms.uVelocity, velocity.read.attach(0));
     gl.uniform1i(advectionProgram.uniforms.uSource, dye.read.attach(1));
@@ -960,10 +940,8 @@ function render(target) {
         applySunrays(dye.read, dye.write, sunrays);
         blur(sunrays, sunraysTemp, 1);
     }
-
     if (target != null && config.TRANSPARENT) gl.disable(gl.BLEND);
     else { gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.enable(gl.BLEND); }
-
     if (!config.TRANSPARENT) drawColor(target, normalizeColor(config.BACK_COLOR));
     if (target == null && config.TRANSPARENT) drawCheckerboard(target);
     drawDisplay(target);
@@ -1010,7 +988,6 @@ function applyBloom(source, target) {
     gl.uniform1f(bloomPrefilterProgram.uniforms.threshold, config.BLOOM_THRESHOLD);
     gl.uniform1i(bloomPrefilterProgram.uniforms.uTexture, source.attach(0));
     blit(last);
-
     bloomBlurProgram.bind();
     for (let i = 0; i < bloomFramebuffers.length; i++) {
         let dest = bloomFramebuffers[i];
@@ -1019,7 +996,6 @@ function applyBloom(source, target) {
         blit(dest);
         last = dest;
     }
-
     gl.blendFunc(gl.ONE, gl.ONE);
     gl.enable(gl.BLEND);
     for (let i = bloomFramebuffers.length - 2; i >= 0; i--) {
@@ -1030,7 +1006,6 @@ function applyBloom(source, target) {
         blit(dest);
         last = dest;
     }
-
     gl.disable(gl.BLEND);
     bloomFinalProgram.bind();
     gl.uniform2f(bloomFinalProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
@@ -1089,7 +1064,6 @@ function splat(x, y, dx, dy, color) {
     gl.uniform1f(splatProgram.uniforms.radius, correctRadius(config.SPLAT_RADIUS / 100));
     blit(velocity.write);
     velocity.swap();
-
     gl.uniform1i(splatProgram.uniforms.uTarget, dye.read.attach(0));
     gl.uniform3f(splatProgram.uniforms.color, color.r, color.g, color.b);
     blit(dye.write);
@@ -1102,9 +1076,6 @@ function correctRadius(e) {
     return e;
 }
 
-/**
- * 9. INPUT HELPERS
- */
 function updatePointerDownData(p, id, x, y) {
     p.id = id; p.down = true; p.moved = false;
     p.texcoordX = x / canvas.width; p.texcoordY = 1 - y / canvas.height;
